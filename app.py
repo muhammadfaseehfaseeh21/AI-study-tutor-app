@@ -1,7 +1,6 @@
 import os
 import streamlit as st
-from crewai import Agent, Crew, Process, Task
-from langchain_openai import ChatOpenAI
+from crewai import Agent, Crew, Process, Task, LLM
 
 # -------------------------------------------------------------------
 # Page Configuration & UI Layout
@@ -21,13 +20,13 @@ st.caption("Powered by CrewAI & `openai/gpt-oss-120b`")
 with st.sidebar:
     st.header("🔑 Model & API Settings")
     
-    # Allow secrets via Streamlit Secrets or manual input
+    # Check environment or secrets
     env_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")
     env_base_url = os.getenv("OPENAI_API_BASE") or st.secrets.get("OPENAI_API_BASE", "https://openrouter.ai/api/v1")
     
     api_key = st.text_input("API Key", value=env_api_key, type="password")
     base_url = st.text_input("API Base URL", value=env_base_url)
-    model_name = st.text_input("Model Identifier", value="openai/gpt-oss-120b")
+    model_name = st.text_input("Model Identifier", value="openrouter/openai/gpt-oss-120b")
     
     st.divider()
     tutor_mode = st.radio(
@@ -40,11 +39,11 @@ with st.sidebar:
 # Helper: Initialize CrewAI Agent & Task Execution
 # -------------------------------------------------------------------
 def run_tutor_crew(user_topic: str, mode: str, api_key: str, base_url: str, model: str):
-    # Initialize the LLM targeting gpt-oss-120b via OpenAI API interface
-    llm = ChatOpenAI(
+    # Use CrewAI's native LLM class instead of LangChain's ChatOpenAI
+    llm = LLM(
         model=model,
-        openai_api_key=api_key,
-        openai_api_base=base_url,
+        api_key=api_key,
+        base_url=base_url,
         temperature=0.3
     )
 
@@ -53,7 +52,7 @@ def run_tutor_crew(user_topic: str, mode: str, api_key: str, base_url: str, mode
         role="Expert Socratic Study Tutor",
         goal="Help students deeply understand academic topics through interactive, structured, and pedagogical assistance.",
         backstory=(
-            "You are a patient, world-class academic tutor. You avoid directly blurting out answers "
+            "You are a patient, world-class academic tutor. You avoid directly giving final answers "
             "when explaining concepts, preferring step-by-step guidance. You write mathematical expressions "
             "using clean LaTeX ($...$) and format outputs clearly using standard Markdown."
         ),
@@ -75,9 +74,9 @@ def run_tutor_crew(user_topic: str, mode: str, api_key: str, base_url: str, mode
         description = (
             f"Generate a 3-question practice quiz based on the topic '{user_topic}'. "
             "Include Multiple Choice Questions (MCQs) with options A, B, C, D. Provide an answer key "
-            "and detailed explanations at the end under a spoiler heading."
+            "and detailed explanations at the end."
         )
-        expected_output = "A formatted Markdown quiz with questions, multiple-choice options, and an hidden/collapsible answer key with explanations."
+        expected_output = "A formatted Markdown quiz with questions, multiple-choice options, and an answer key with explanations."
 
     else:  # Concept Summary & Flashcards
         description = (
@@ -129,6 +128,6 @@ if st.button("Get Guidance", type="primary", use_container_width=True):
                     model=model_name
                 )
                 st.markdown("### 📚 Tutor Response")
-                st.markdown(response)
+                st.markdown(response.raw if hasattr(response, 'raw') else str(response))
             except Exception as e:
                 st.error(f"Execution Error: {str(e)}")
