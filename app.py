@@ -20,8 +20,8 @@ st.caption("Powered by CrewAI & `openai/gpt-oss-120b`")
 with st.sidebar:
     st.header("🔑 Model & API Settings")
     
-    # Check environment or secrets
-    env_api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")
+    # Fetch default key/url from Streamlit secrets or OS environment
+    env_api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")
     env_base_url = os.getenv("OPENAI_API_BASE") or st.secrets.get("OPENAI_API_BASE", "https://openrouter.ai/api/v1")
     
     api_key = st.text_input("API Key", value=env_api_key, type="password")
@@ -39,7 +39,12 @@ with st.sidebar:
 # Helper: Initialize CrewAI Agent & Task Execution
 # -------------------------------------------------------------------
 def run_tutor_crew(user_topic: str, mode: str, api_key: str, base_url: str, model: str):
-    # Use CrewAI's native LLM class instead of LangChain's ChatOpenAI
+    # Set environment variables directly so underlying libraries (LiteLLM/CrewAI) pick them up
+    os.environ["OPENAI_API_KEY"] = api_key
+    os.environ["OPENAI_API_BASE"] = base_url
+    os.environ["OPENROUTER_API_KEY"] = api_key
+
+    # Initialize CrewAI LLM with explicit API key and base URL
     llm = LLM(
         model=model,
         api_key=api_key,
